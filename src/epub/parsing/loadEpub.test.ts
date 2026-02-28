@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
 import { loadEpub } from './loadEpub';
+import type { EpubBook } from '../types';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const testBooksDir = resolve(__dirname, '../../../test-books');
@@ -27,10 +28,12 @@ const fileMap: Record<string, string> = {
 
 describe('loadEpub', () => {
   describe('happy path (EPUB 3 nav)', () => {
-    let book: Awaited<ReturnType<typeof loadEpub>>;
+    let result: Awaited<ReturnType<typeof loadEpub>>;
+    let book: EpubBook;
 
     beforeAll(async () => {
-      book = await loadEpub(makeMockZip(fileMap));
+      result = await loadEpub(makeMockZip(fileMap));
+      book = result.book;
     });
 
     it('returns correct metadata', () => {
@@ -59,12 +62,16 @@ describe('loadEpub', () => {
       expect(gawain?.children).toHaveLength(4);
       expect(gawain?.children[0].label).toBe('Fit I');
     });
+
+    it('returns opfDir with trailing slash', () => {
+      expect(result.opfDir).toBe('epub/');
+    });
   });
 
   describe('NCX fallback', () => {
     it('uses NCX when no nav item in manifest', async () => {
       const opfWithoutNav = fileMap['epub/content.opf'].replace(' properties="nav"', '');
-      const book = await loadEpub(makeMockZip({ ...fileMap, 'epub/content.opf': opfWithoutNav }));
+      const { book } = await loadEpub(makeMockZip({ ...fileMap, 'epub/content.opf': opfWithoutNav }));
       expect(book.toc).toHaveLength(10);
       expect(book.toc[4].label).toBe('Sir Gawain and the Green Knight');
       expect(book.toc[4].children).toHaveLength(4);
@@ -76,7 +83,7 @@ describe('loadEpub', () => {
       const opfStripped = fileMap['epub/content.opf']
         .replace(' properties="nav"', '')
         .replace(' media-type="application/x-dtbncx+xml"', ' media-type="application/octet-stream"');
-      const book = await loadEpub(makeMockZip({ ...fileMap, 'epub/content.opf': opfStripped }));
+      const { book } = await loadEpub(makeMockZip({ ...fileMap, 'epub/content.opf': opfStripped }));
       expect(book.toc).toEqual([]);
     });
   });

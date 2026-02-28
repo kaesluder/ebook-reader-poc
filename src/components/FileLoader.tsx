@@ -20,8 +20,8 @@ function FileLoader() {
       try {
         const arrayBuffer = e.target?.result as ArrayBuffer;
         const zip = await JSZip.loadAsync(arrayBuffer);
-        const book = await loadEpub(zip);
-        dispatch({ type: 'LOAD_SUCCESS', book });
+        const { book, opfDir } = await loadEpub(zip);
+        dispatch({ type: 'LOAD_SUCCESS', book, zip, opfDir });
       } catch (err) {
         dispatch({
           type: 'LOAD_ERROR',

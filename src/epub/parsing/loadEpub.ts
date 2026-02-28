@@ -11,7 +11,7 @@ async function readZipFile(zip: JSZip, path: string): Promise<string> {
   return entry.async('string');
 }
 
-export async function loadEpub(zip: JSZip): Promise<EpubBook> {
+export async function loadEpub(zip: JSZip): Promise<{ book: EpubBook; opfDir: string }> {
   const containerXml = await readZipFile(zip, 'META-INF/container.xml');
   const opfPath = parseContainer(containerXml);
 
@@ -37,5 +37,5 @@ export async function loadEpub(zip: JSZip): Promise<EpubBook> {
     }
   }
 
-  return { metadata, manifest, spine, toc };
+  return { book: { metadata, manifest, spine, toc }, opfDir };
 }

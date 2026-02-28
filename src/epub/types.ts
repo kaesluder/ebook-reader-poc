@@ -1,3 +1,5 @@
+import type JSZip from 'jszip';
+
 export interface EpubMetadata {
   title: string;
   authors: string[];       // dc:creator elements
@@ -42,4 +44,7 @@ export interface EpubState {
   status: EpubStatus;
   book: EpubBook | null;
   error: string | null;
+  selectedChapterHref: string | null;
+  zip: JSZip | null;
+  opfDir: string;
 }

@@ -1,20 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import JSZip from 'jszip';
 import { EpubProvider, useEpub } from './EpubContext';
 import type { EpubBook } from '../types';
 
 const stubBook: EpubBook = {
-  metadata: {
-    title: 'Test Book',
-    authors: ['Author'],
-    language: 'en',
-    identifier: 'test-id',
-  },
+  metadata: { title: 'Test Book', authors: ['Author'], language: 'en', identifier: 'test-id' },
   manifest: [],
   spine: [],
   toc: [],
 };
+
+const stubZip = {} as JSZip;
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <EpubProvider>{children}</EpubProvider>
@@ -23,7 +21,14 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe('EpubContext', () => {
   it('provides idle initial state', () => {
     const { result } = renderHook(() => useEpub(), { wrapper });
-    expect(result.current.state).toEqual({ status: 'idle', book: null, error: null });
+    expect(result.current.state).toEqual({
+      status: 'idle',
+      book: null,
+      error: null,
+      selectedChapterHref: null,
+      zip: null,
+      opfDir: '',
+    });
   });
 
   it('transitions to loading on LOAD_START', () => {
@@ -35,9 +40,11 @@ describe('EpubContext', () => {
   it('transitions to loaded on LOAD_SUCCESS', () => {
     const { result } = renderHook(() => useEpub(), { wrapper });
     act(() => result.current.dispatch({ type: 'LOAD_START' }));
-    act(() => result.current.dispatch({ type: 'LOAD_SUCCESS', book: stubBook }));
+    act(() => result.current.dispatch({ type: 'LOAD_SUCCESS', book: stubBook, zip: stubZip, opfDir: 'epub/' }));
     expect(result.current.state.status).toBe('loaded');
     expect(result.current.state.book).toBe(stubBook);
+    expect(result.current.state.zip).toBe(stubZip);
+    expect(result.current.state.opfDir).toBe('epub/');
   });
 
   it('transitions to error on LOAD_ERROR', () => {

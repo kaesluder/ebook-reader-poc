@@ -11,15 +11,18 @@ vi.mock('jszip', () => ({
 
 vi.mock('../epub/parsing/loadEpub', () => ({
   loadEpub: vi.fn().mockResolvedValue({
-    metadata: {
-      title: 'Mock Book Title',
-      authors: ['Mock Author'],
-      language: 'en',
-      identifier: 'mock-id',
+    book: {
+      metadata: {
+        title: 'Mock Book Title',
+        authors: ['Mock Author'],
+        language: 'en',
+        identifier: 'mock-id',
+      },
+      manifest: [],
+      spine: [],
+      toc: [{ label: 'Chapter 1', href: 'ch1.xhtml', children: [] }],
     },
-    manifest: [],
-    spine: [],
-    toc: [{ label: 'Chapter 1', href: 'ch1.xhtml', children: [] }],
+    opfDir: 'epub/',
   }),
 }));
 
