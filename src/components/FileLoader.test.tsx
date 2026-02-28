@@ -1,21 +1,36 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { EpubProvider } from '../epub/store/EpubContext';
 
-// Mock JSZip before importing the component
 vi.mock('jszip', () => ({
   default: {
-    loadAsync: vi.fn().mockResolvedValue({
-      files: {
-        'content.opf': {},
-        'chapter1.xhtml': {},
-        'chapter2.xhtml': {},
-      },
-    }),
+    loadAsync: vi.fn().mockResolvedValue({}),
   },
 }));
 
+vi.mock('../epub/parsing/loadEpub', () => ({
+  loadEpub: vi.fn().mockResolvedValue({
+    metadata: {
+      title: 'Mock Book Title',
+      authors: ['Mock Author'],
+      language: 'en',
+      identifier: 'mock-id',
+    },
+    manifest: [],
+    spine: [],
+    toc: [{ label: 'Chapter 1', href: 'ch1.xhtml', children: [] }],
+  }),
+}));
+
 import FileLoader from './FileLoader';
-import JSZip from 'jszip';
+import { loadEpub } from '../epub/parsing/loadEpub';
+
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <EpubProvider>{children}</EpubProvider>
+);
+
+const mockFile = new File(['test content'], 'test.epub', { type: 'application/epub+zip' });
 
 describe('FileLoader', () => {
   beforeEach(() => {
@@ -23,30 +38,28 @@ describe('FileLoader', () => {
   });
 
   it('renders the file input', () => {
-    render(<FileLoader />);
-    const fileInput = screen.getByLabelText(/select an epub file to load/i);
-    expect(fileInput).toBeInTheDocument();
+    render(<FileLoader />, { wrapper });
+    expect(screen.getByLabelText(/select an epub file to load/i)).toBeInTheDocument();
   });
 
-  it('file selection triggers file reading and state update', async () => {
-    render(<FileLoader />);
-    
+  it('shows book title and metadata after successful load', async () => {
+    render(<FileLoader />, { wrapper });
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    
-    // Create a mock file
-    const mockFile = new File(['test content'], 'test.epub', { type: 'application/epub+zip' });
-    
-    // Fire change event with the mock file
     fireEvent.change(fileInput, { target: { files: [mockFile] } });
-    
-    // Verify JSZip.loadAsync was called
-    await waitFor(() => {
-      expect(JSZip.loadAsync).toHaveBeenCalled();
-    });
-    
-    // Verify the UI shows loaded file info (Badge shows "Loaded" text)
-    const loadedBadge = await screen.findByText(/loaded/i);
-    expect(loadedBadge).toBeInTheDocument();
-    expect(screen.getByText(/test\.epub/i)).toBeInTheDocument();
+
+    await waitFor(() => expect(loadEpub).toHaveBeenCalled());
+    expect(await screen.findByText('Mock Book Title')).toBeInTheDocument();
+    expect(screen.getByText(/loaded/i)).toBeInTheDocument();
+    expect(screen.getByText('Mock Author')).toBeInTheDocument();
+  });
+
+  it('shows error message on load failure', async () => {
+    vi.mocked(loadEpub).mockRejectedValueOnce(new Error('bad zip file'));
+    render(<FileLoader />, { wrapper });
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [mockFile] } });
+
+    expect(await screen.findByText('bad zip file')).toBeInTheDocument();
+    expect(screen.getByText(/error/i)).toBeInTheDocument();
   });
 });

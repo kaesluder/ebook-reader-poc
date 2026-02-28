@@ -1,44 +1,34 @@
 import { useState, type ChangeEvent } from 'react';
 import JSZip from 'jszip';
-import { Card, FileInput, Label, Badge } from 'flowbite-react';
-
-interface FileData {
-  name: string;
-  size: number;
-  zip: JSZip;
-}
+import { Card, FileInput, Label, Badge, Spinner } from 'flowbite-react';
+import { useEpub } from '../epub/store/EpubContext';
+import { loadEpub } from '../epub/parsing/loadEpub';
 
 function FileLoader() {
-  const [fileData, setFileData] = useState<FileData | null>(null);
+  const { state, dispatch } = useEpub();
+  const [fileName, setFileName] = useState<string | null>(null);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
+    if (!file) return;
+
+    setFileName(file.name);
+    dispatch({ type: 'LOAD_START' });
 
     const reader = new FileReader();
     reader.onload = async (e) => {
-      const arrayBuffer = e.target?.result as ArrayBuffer;
-      
-      const zip = await JSZip.loadAsync(arrayBuffer);
-      
-      const fileNames = Object.keys(zip.files);
-      
-      console.log(`File name: ${file.name}`);
-      console.log(`File size: ${file.size} bytes`);
-      console.log(`ZIP entries: ${fileNames.length}`);
-      fileNames.forEach((filePath) => {
-        console.log(filePath);
-      });
-
-      setFileData({
-        name: file.name,
-        size: file.size,
-        zip: zip,
-      });
+      try {
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        const zip = await JSZip.loadAsync(arrayBuffer);
+        const book = await loadEpub(zip);
+        dispatch({ type: 'LOAD_SUCCESS', book });
+      } catch (err) {
+        dispatch({
+          type: 'LOAD_ERROR',
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
     };
-
     reader.readAsArrayBuffer(file);
   };
 
@@ -48,42 +38,62 @@ function FileLoader() {
         Load eBook
       </h5>
       <div className="flex flex-col gap-4">
-        
-        <div className="flex flex-col gap-4">
-          <Label htmlFor="file-upload" className="text-gray-500 dark:text-gray-400">
-            Select an EPUB file to load
-          </Label>
-          <FileInput
-            id="file-upload"
-            accept=".epub"
-            onChange={handleFileChange}
-          />
-        </div>
+        <Label htmlFor="file-upload" className="text-gray-500 dark:text-gray-400">
+          Select an EPUB file to load
+        </Label>
+        <FileInput
+          id="file-upload"
+          accept=".epub"
+          onChange={handleFileChange}
+          disabled={state.status === 'loading'}
+        />
       </div>
 
-      {fileData && (
+      {state.status === 'loading' && (
+        <div className="mt-4 flex items-center gap-2 text-gray-500 dark:text-gray-400">
+          <Spinner size="sm" />
+          <span>Loading {fileName}…</span>
+        </div>
+      )}
+
+      {state.status === 'loaded' && state.book && (
         <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
-            <Badge color="success" size="sm">
-              Loaded
-            </Badge>
+            <Badge color="success" size="sm">Loaded</Badge>
             <span className="font-medium text-gray-900 dark:text-white">
-              {fileData.name}
+              {state.book.metadata.title}
             </span>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 text-sm">
             <div className="flex justify-between">
-              <Label className="text-gray-500 dark:text-gray-400">Size:</Label>
+              <Label className="text-gray-500 dark:text-gray-400">Author:</Label>
               <span className="text-gray-900 dark:text-white">
-                {(fileData.size / 1024).toFixed(2)} KB
+                {state.book.metadata.authors.join(', ')}
               </span>
             </div>
             <div className="flex justify-between">
-              <Label className="text-gray-500 dark:text-gray-400">Entries:</Label>
+              <Label className="text-gray-500 dark:text-gray-400">Language:</Label>
               <span className="text-gray-900 dark:text-white">
-                {Object.keys(fileData.zip.files).length}
+                {state.book.metadata.language}
               </span>
             </div>
+            <div className="flex justify-between">
+              <Label className="text-gray-500 dark:text-gray-400">Chapters:</Label>
+              <span className="text-gray-900 dark:text-white">
+                {state.book.toc.length}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {state.status === 'error' && (
+        <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+          <div className="flex items-center gap-2">
+            <Badge color="failure" size="sm">Error</Badge>
+            <span className="text-red-700 dark:text-red-400 text-sm">
+              {state.error}
+            </span>
           </div>
         </div>
       )}
