@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent } from 'react';
 import JSZip from 'jszip';
-import { Card, FileInput, Label, Badge, Spinner } from 'flowbite-react';
+import { FileInput, Label, Badge, Spinner } from 'flowbite-react';
 import { useEpub } from '../epub/store/EpubContext';
 import { loadEpub } from '../epub/parsing/loadEpub';
 
@@ -33,10 +33,7 @@ function FileLoader() {
   };
 
   return (
-    <Card className="max-w-md mx-auto mt-8">
-      <h5 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-        Load eBook
-      </h5>
+    <div className="p-4">
       <div className="flex flex-col gap-4">
         <Label htmlFor="file-upload" className="text-gray-500 dark:text-gray-400">
           Select an EPUB file to load
@@ -97,7 +94,7 @@ function FileLoader() {
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 

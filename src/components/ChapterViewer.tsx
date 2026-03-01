@@ -64,15 +64,14 @@ export default function ChapterViewer() {
     return () => { cancelled = true; };
   }, [state.selectedChapterHref, state.zip, state.opfDir]);
 
-  if (!srcdoc) return null;
+  if (!srcdoc) return <div className="h-full" />;
 
   return (
     <iframe
       title="Chapter content"
       srcDoc={srcdoc}
       sandbox=""
-      className="w-full mt-4 border-0"
-      style={{ height: '70vh' }}
+      className="w-full h-full border-0 bg-stone-50"
     />
   );
 }

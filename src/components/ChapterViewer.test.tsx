@@ -84,9 +84,10 @@ function TestHarness() {
 }
 
 describe('ChapterViewer', () => {
-  it('renders nothing when no chapter is selected', () => {
+  it('renders a placeholder div when no chapter is selected', () => {
     const { container } = render(<ChapterViewer />, { wrapper });
-    expect(container.firstChild).toBeNull();
+    expect(container.querySelector('iframe')).toBeNull();
+    expect(container.firstChild).not.toBeNull();
   });
 
   it('renders an iframe once a chapter is selected', async () => {

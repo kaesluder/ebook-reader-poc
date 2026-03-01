@@ -42,7 +42,7 @@ function TestHarness({ book }: { book: EpubBook }) {
   const { dispatch, state } = useEpub();
   return (
     <>
-      <button onClick={() => dispatch({ type: 'LOAD_SUCCESS', book })}>load</button>
+      <button onClick={() => dispatch({ type: 'LOAD_SUCCESS', book, zip: null as never, opfDir: '' })}>load</button>
       <ChapterList />
       <span data-testid="selected">{state.selectedChapterHref ?? 'none'}</span>
     </>

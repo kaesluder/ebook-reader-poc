@@ -42,7 +42,7 @@ function NavItemList({
   );
 }
 
-export default function ChapterList() {
+export default function ChapterList({ onAfterSelect }: { onAfterSelect?: () => void }) {
   const { state, dispatch } = useEpub();
 
   if (state.status !== 'loaded' || !state.book || state.book.toc.length === 0) {
@@ -57,7 +57,10 @@ export default function ChapterList() {
           <NavItemList
             items={state.book.toc}
             selectedHref={state.selectedChapterHref}
-            onSelect={(href) => dispatch({ type: 'SELECT_CHAPTER', href })}
+            onSelect={(href) => {
+              dispatch({ type: 'SELECT_CHAPTER', href });
+              onAfterSelect?.();
+            }}
           />
         </AccordionContent>
       </AccordionPanel>
