@@ -2,10 +2,24 @@ import { useState } from 'react';
 import { useEpub } from '../epub/store/EpubContext';
 import FileLoader from './FileLoader';
 import ChapterList from './ChapterList';
+import type { NavItem } from '../epub/types';
+
+function flattenToc(items: NavItem[]): NavItem[] {
+  return items.flatMap(item => [item, ...flattenToc(item.children)]);
+}
 
 export default function Toolbar() {
-  const { state } = useEpub();
+  const { state, dispatch } = useEpub();
   const [open, setOpen] = useState(false);
+
+  const flatToc = state.book ? flattenToc(state.book.toc) : [];
+  const currentIndex = flatToc.findIndex(item => item.href === state.selectedChapterHref);
+  const prevHref = currentIndex > 0 ? flatToc[currentIndex - 1].href : null;
+  const nextHref = currentIndex >= 0 && currentIndex < flatToc.length - 1
+    ? flatToc[currentIndex + 1].href
+    : null;
+
+  const navBtnClass = 'px-3 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed';
 
   return (
     <header className="relative z-10 bg-white dark:bg-gray-800 shadow">
@@ -24,14 +38,34 @@ export default function Toolbar() {
             : 'No book loaded'}
         </span>
 
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="px-3 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium"
-          aria-expanded={open}
-        >
-          {open ? 'Close ▲' : 'Menu ▼'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => prevHref && dispatch({ type: 'SELECT_CHAPTER', href: prevHref })}
+            disabled={!prevHref}
+            className={navBtnClass}
+            aria-label="Previous chapter"
+          >
+            ← Prev
+          </button>
+          <button
+            type="button"
+            onClick={() => nextHref && dispatch({ type: 'SELECT_CHAPTER', href: nextHref })}
+            disabled={!nextHref}
+            className={navBtnClass}
+            aria-label="Next chapter"
+          >
+            Next →
+          </button>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className={navBtnClass}
+            aria-expanded={open}
+          >
+            {open ? 'Close ▲' : 'Menu ▼'}
+          </button>
+        </div>
       </div>
 
       {open && (

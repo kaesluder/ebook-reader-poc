@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useEpub } from '../epub/store/EpubContext';
+import type { ManifestItem } from '../epub/types';
 
 /** Resolve a relative path against a base directory, collapsing `..` segments. */
 export function resolvePath(baseDir: string, relativePath: string): string {
@@ -10,6 +11,24 @@ export function resolvePath(baseDir: string, relativePath: string): string {
     else if (part !== '.') resolved.push(part);
   }
   return resolved.join('/');
+}
+
+export function getMediaType(
+  resolvedZipPath: string,
+  opfDir: string,
+  manifest: ManifestItem[]
+): string {
+  const manifestHref = resolvedZipPath.startsWith(opfDir)
+    ? resolvedZipPath.slice(opfDir.length)
+    : resolvedZipPath;
+  const item = manifest.find(m => m.href === manifestHref);
+  if (item) return item.mediaType;
+  const ext = resolvedZipPath.split('.').pop()?.toLowerCase() ?? '';
+  const extMap: Record<string, string> = {
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+    gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp',
+  };
+  return extMap[ext] ?? 'image/png';
 }
 
 export default function ChapterViewer() {
@@ -48,6 +67,21 @@ export default function ChapterViewer() {
         })
       );
 
+      // Image inlining
+      const imgs = Array.from(doc.querySelectorAll('img[src]'));
+      await Promise.all(
+        imgs.map(async (img) => {
+          const rawSrc = img.getAttribute('src') ?? '';
+          if (rawSrc.startsWith('data:') || /^https?:\/\//.test(rawSrc)) return;
+          const imgPath = resolvePath(chapterDir, rawSrc);
+          const imgEntry = zip.file(imgPath);
+          if (!imgEntry) return;
+          const base64 = await imgEntry.async('base64');
+          const mediaType = getMediaType(imgPath, state.opfDir, state.book?.manifest ?? []);
+          img.setAttribute('src', `data:${mediaType};base64,${base64}`);
+        })
+      );
+
       const body = doc.querySelector('body');
       const bodyHtml = body?.innerHTML ?? '';
       const styleBlock = cssContents
@@ -62,7 +96,7 @@ export default function ChapterViewer() {
 
     loadChapter();
     return () => { cancelled = true; };
-  }, [state.selectedChapterHref, state.zip, state.opfDir]);
+  }, [state.selectedChapterHref, state.zip, state.opfDir, state.book]);
 
   if (!srcdoc) return <div className="h-full" />;
 
